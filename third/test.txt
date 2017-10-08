@@ -1,0 +1,4 @@
+hello, My name is Sarah
+Nice to meet you.
+Hope to see you soon.
+Bye!
