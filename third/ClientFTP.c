@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdlib.h>
 
 #define FILENAMESIZE 256
 #define BUFSIZE 512
@@ -13,18 +14,21 @@
 #define FileUpReq 02
 #define EchoRep 11
 #define FileAck 12
+#define FileDownReq 13
 
 void DieWithError(char *msg);
 int handleOperation(int sock);
-void FileUploadProcess(int sock, char *A_fileName);
+void FileUploadProcess(int sock, char *A_fileName);//파일 업로드
+void rls(int sock);//서버목록
+void get(int sock, char *A_fileName);//서버로부터 파일 받기
 
 int handleOperation(int sock){
-printf("--handleOperation--\n");
     
     char operation;
     char c;
     int flag=0;
     char fileName[50];
+    char msgType;
     
     while((c=getchar())!='\n' && c!=EOF);
           
@@ -35,59 +39,59 @@ printf("--handleOperation--\n");
           scanf("%c", &operation);
           
          if(operation=='p'){
+               msgType=FileUpReq;
+
+               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
+                   DieWithError("send() failed");
+               
                printf("filename to put to server ->");
                scanf("%s",fileName);
           
                while((c=getchar())!='\n' && c!=EOF);
                FileUploadProcess(sock,fileName);
+
            }else if(operation=='g'){
+               
+               msgType=FileDownReq;
+
+               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
+                   DieWithError("send() failed");
+               
                printf("get file from the server->");
+               scanf("%s", fileName);
+
+               while((c=getchar())!='\n' && c!=EOF);
+               get(sock,fileName);
+
            }else if(operation=='l'){
-
+                    system("ls");
+                    while((c=getchar())!='\n' && c!=EOF);
            }else if(operation=='r'){
+               printf("rls\n");
+               msgType=EchoRep;
 
+               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
+                   DieWithError("send() failed");
+               
+               rls(sock);
            }else if(operation=='e'){
+              
+               msgType=EchoReq;
+               
+               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
+                   DieWithError("send() failed");
                break;
            }else{
                printf("Wrong operation! Try Again.\n");
            }
-         /*switch(command){
-    
-            case 'p':
-                printf("filename to put to server ->");
-                scanf("%s",fileName);
-                //함수
-                FileUploadProcess(sock, fileName);
-                break;
-             case 'g':
-                printf("file namen to get the file from server ->\n");
-                printf("not now\n");
-                break;
-            case 'l': 
-                break;
-            case 'r':
-                break;
-            case 'e': uint8_t msgType= ExitReq;
-                      ssize_t numBytesSent= send(sock, &msgType, sizeof(msgType),0);
-                      if(numBytesSent!=sizeof(msgType))DieWithError("send() failed");
-                      flag=1;
-                      break;
-            default: break;
-         }*/
-
-    }printf("end of while loop\n");
+    }
     return 0;
 }
 
 void FileUploadProcess(int sock, char *A_fileName){
 
     printf("--FileUploadProcess--\n");    
-    //msgType전송: 필드 크기 1바이트로 고정
-  /*  char msgType =FileUpReq;
-    ssize_t numBytesSent = send(sock, &msgType, sizeof(msgType), 0);
-    if(numBytesSent!=sizeof(msgType))DieWithError("send() failed");
-    printf("msgType전송 성공!\n");
-*/
+   
     //파일 이름을 서버에 전송:필드크기 256바이트로 고정
     int numBytesSent;
     char fileName[FILENAMESIZE];
@@ -130,5 +134,73 @@ void FileUploadProcess(int sock, char *A_fileName){
 
     if(msgType==FileAck)printf("%s 파일업로드 성공!(%u Bytes)\n", fileName, fileSize);
     else printf("%s 파일업로드 실패!\n", fileName);
+}
+
+void rls(int clntsock){
+
+    char Buffer[BUFSIZE];
+    int i=0; 
+    int listnum=0; //목록개수
+
+    //목록 개수 받기
+    if(recv(clntsock, &listnum, sizeof(listnum),0)<0)
+        DieWithError("recv() failed");
+
+    for(i=0; i<listnum; i++){
+    
+        if((recv(clntsock, Buffer, FILENAMESIZE, 0))<0)
+            DieWithError("recv() failed.");
+        printf("%s\n",Buffer);
+        memset(Buffer,0,BUFSIZE);
+    }
+}
+
+void get(int sock, char* A_fileName){
+
+    //msgType 전송
+    char msgType=FileDownReq;
+    int numBytesSent;
+    if((numBytesSent=send(sock, &msgType, sizeof(msgType),0))!=sizeof(msgType))
+        DieWithError("send() failed");
+    
+    //파일 이름 서버에 전송
+    char fileName[FILENAMESIZE];
+    memset(fileName, 0,FILENAMESIZE);
+    strcpy(fileName, A_fileName);
+    if((numBytesSent=send(sock, fileName, FILENAMESIZE,0))!=FILENAMESIZE)
+        DieWithError("send() failed");
+
+    //파일 크기를 수신
+    strcat(fileName,"_down");
+    printf("fileName= %s\n", fileName);
+    int netFileSize;
+    int fileSize;
+    int numBytesRcvd=recv(sock,&netFileSize, sizeof(netFileSize),0);
+    if(numBytesRcvd<0)DieWithError("recv() failed");
+    fileSize= ntohl(netFileSize);
+
+    //파일 내용을 수신
+    FILE *fp= fopen(fileName,"w");
+    if(fp==NULL)DieWithError("fopen() failed");
+
+    int rcvdFileSize=0;
+
+    
+        char fileBuf[BUFSIZE];
+        if((numBytesRcvd=recv(sock,fileBuf, BUFSIZE,0))<0)
+            DieWithError("recv() failed");
+        fwrite(fileBuf, sizeof(char), numBytesRcvd, fp);
+        if(ferror(fp))
+            DieWithError("fwrite() failed");
+
+    printf("fileSize= %d  다운로드 완료\n", fileSize);
+    fclose(fp);
+
+    //파일수신 성공 메시지 전송
+    msgType= FileAck;
+    if((numBytesSent=send(sock, &msgType, sizeof(msgType),0))!=sizeof(msgType))
+        DieWithError("send() failed");
+
+
 }
 
