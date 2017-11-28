@@ -18,76 +18,8 @@
 #define FileDownReq 13
 
 void DieWithError(char *msg);
-int handleOperation(int sock);
 void FileUploadProcess(int sock, char *A_fileName);//파일 업로드
-void rls(int sock);//서버목록
 void get(int sock, char *A_fileName);//서버로부터 파일 받기
-
-int handleOperation(int sock){
-    
-    char operation;
-    char c;
-    int flag=0;
-    char fileName[50];
-    char msgType;
-    
-    while((c=getchar())!='\n' && c!=EOF);
-          
-    while(flag!=1){
-          
-          printf("Welcome to Socket FT Client \n");
-          printf("ftp commnad [p)ut, g)et, l)s, r)ls, e)xit] -> ");
-          scanf("%c", &operation);
-          
-         if(operation=='p'){
-               msgType=FileUpReq;
-
-               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
-                   DieWithError("send() failed");
-               
-               printf("filename to put to server ->");
-               scanf("%s",fileName);
-          
-               while((c=getchar())!='\n' && c!=EOF);
-               FileUploadProcess(sock,fileName);
-
-           }else if(operation=='g'){
-               
-               msgType=FileDownReq;
-
-               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
-                   DieWithError("send() failed");
-               
-               printf("get file from the server->");
-               scanf("%s", fileName);
-
-               while((c=getchar())!='\n' && c!=EOF);
-               get(sock,fileName);
-
-           }else if(operation=='l'){
-                    system("ls");
-                    while((c=getchar())!='\n' && c!=EOF);
-           }else if(operation=='r'){
-               printf("rls\n");
-               msgType=EchoRep;
-
-               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
-                   DieWithError("send() failed");
-               
-               rls(sock);
-           }else if(operation=='e'){
-              
-               msgType=EchoReq;
-               
-               if(send(sock,&msgType, sizeof(msgType),0)!=sizeof(msgType))
-                   DieWithError("send() failed");
-               break;
-           }else{
-               printf("Wrong operation! Try Again.\n");
-           }
-    }
-    return 0;
-}
 
 void FileUploadProcess(int sock, char *A_fileName){
 
