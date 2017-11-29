@@ -5,12 +5,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#define RCVBUFSIZE 32
+#define RCVBUFSIZE 256
 
+void savelog(int sock, char *filename);
 void DieWithError(char *errorMessage);
 void FileUploadProcess(int sock, char *A_fileName);
 void get(int sock, char *A_fileName);
-
+char* InputMessage(int serverSocket);
 int main(int argc, char *argv[]){
 
     int sock;
@@ -44,25 +45,28 @@ int main(int argc, char *argv[]){
     if(connect(sock,(struct sockaddr *)& echoServAddr, sizeof(echoServAddr))<0)
         DieWithError("connect() failed");
   
-    while(strcmp("./quit",echoBuffer)){
+    while(strcmp("./quit",echoBuffer)!=0){
     
         printf("=========== Command ==========\n");
-        printf("1. send file\n");
-        printf("2. download file\n");
-        printf("3. save log\n");
+        printf("1. send_file\n");
+        printf("2. download_file\n");
+        printf("3. save_log\n");
         printf("4. chat\n");
+        printf("5. ./quit\n");
         printf("==============================\n");
         
         memset(echoBuffer, 0, RCVBUFSIZE);
         
         printf("MyShell:~$");
         scanf("%s", echoBuffer);
+        while((c=getchar())!='\n'&&c!=EOF);
+        
         echoStringLen= strlen(echoBuffer);
         if(send(sock, echoBuffer,strlen(echoBuffer) ,0)!=echoStringLen)
             DieWithError("send() failed");
 
-        
-        if(strcmp("send file", echoBuffer)==0){
+        if(strcmp("./quit",echoBuffer)==0)break;
+         else if(strcmp("send_file", echoBuffer)==0){
             memset(filename, 0,RCVBUFSIZE);
             printf("send file is working..\n");
             printf("file name:");
@@ -70,7 +74,7 @@ int main(int argc, char *argv[]){
             FileUploadProcess(sock,filename);
 
         }
-        else if(strcmp("download file", echoBuffer)==0){
+        else if(strcmp("download_file", echoBuffer)==0){
         
             printf("download file is working..\n");
             memset(filename, 0, RCVBUFSIZE);
@@ -78,27 +82,30 @@ int main(int argc, char *argv[]){
             scanf("%s",filename);
             get(sock, filename);
         }
-        else if(strcmp("save log",echoBuffer)==0){
+        else if(strcmp("save_log",echoBuffer)==0){
             
             printf("save log..\n");
-        
+            memset(filename, 0, RCVBUFSIZE);
+            printf("save as:");
+            scanf("%s",filename);
+            savelog(sock, filename);
         }
         else if(strcmp("chat",echoBuffer)==0){
             
             printf("chatting is now working,,\n");
+            printf("<./out to quit the chat>\n");
         while(strcmp("./out",echoBuffer)){
 
-                 memset(echoBuffer,0, sizeof(echoBuffer));
+                 memset(echoBuffer,0, 256);
                  printf("message-> ");
                  scanf("%s", echoBuffer);
                  echoStringLen=strlen(echoBuffer);
                  if((send(sock, echoBuffer, strlen(echoBuffer), 0))!=echoStringLen)
                      DieWithError("send() failed");
                  
-                 memset(echoBuffer, 0,sizeof(echoBuffer));
+                 memset(echoBuffer, 0,256);
                  totalBytesRcvd=0;
-                 printf("message<- : ");
-                
+               /* 
                  while(totalBytesRcvd < echoStringLen){
     
                      //Receive up to the buffer size from the sender
@@ -112,13 +119,14 @@ int main(int argc, char *argv[]){
                   }   
 
                  printf("\n");
-
-                /* if(recv(sock, echoBuffer, sizeof(echoBuffer),0)<=0)
+*/
+                 if(recv(sock, echoBuffer, sizeof(echoBuffer),0)<=0)
                      DieWithError("recv() failed");
 
                  printf("message<- ");
                  printf(echoBuffer);
-                 printf("\n");*/
+                 printf("\n");
+                 if(strcmp("./out",echoBuffer)==0)break;
             }
         }
         else{

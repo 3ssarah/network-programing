@@ -1,0 +1,27 @@
+send_file
+test.txt
+fileSize
+83
+I'm in middle of nowhere
+Network programming
+Santa tell me if you really there
+End
+
+
+=======================
+download_file
+ê
+serverfile.txt
+file size
+127
+This file is originally located on server side
+Hello! This is Network programming final assignment!
+Good bye 2017, Hello 2018!
+
+
+=======================
+save_log
+
+history.txt
+file size
+367

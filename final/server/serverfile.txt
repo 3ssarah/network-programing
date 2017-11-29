@@ -1,0 +1,3 @@
+This file is originally located on server side
+Hello! This is Network programming final assignment!
+Good bye 2017, Hello 2018!

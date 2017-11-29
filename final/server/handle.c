@@ -4,12 +4,13 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define RCVBUFSIZE 32
+#define RCVBUFSIZE 256
 #define MAXEXPENDING 5
 
 void DieWithError(char *msg);
 void HandleFTPUpload(int clnt_sock);
 void FileUploadProcess(int clnt_sock);
+void log_msg(char* msg);
 
 void HandleTCPClient(int clntSocket){
 
@@ -28,14 +29,18 @@ void HandleTCPClient(int clntSocket){
         
         if((recvMsgSize=recv(clntSocket, command, RCVBUFSIZE,0))<0)
             DieWithError("recv() failed");
+        printf("command : %s\n", command);
+        log_msg(command);
 
-        if(strcmp(command,"download file")==0){
-            printf("download file...\n");
-            HandleFTPUpload(clntSocket);
-        }
-        else if(strcmp(command, "send file")==0){
-            printf("send file...\n");
+        if(strcmp(command,"./quit")==0) break;
+        
+            else if(strcmp(command,"download_file")==0){
+            printf("handle download_file command...\n");
             FileUploadProcess(clntSocket);
+        }
+        else if(strcmp(command, "send_file")==0){
+            printf("handle send_file command...\n");
+            HandleFTPUpload(clntSocket);
         }
         else if(strcmp(command, "chat")==0){
         
@@ -44,27 +49,38 @@ void HandleTCPClient(int clntSocket){
              printf("message <-:%s \n", echoBuffer);
             */
             printf("chatting is now working...\n");
-             while(recvMsgSize>0){
+             while(recvMsgSize>0 && strcmp(echoBuffer, "./out")!=0){
     
-                if(send(clntSocket, echoBuffer, recvMsgSize,0)!=recvMsgSize)
+                /*if(send(clntSocket, echoBuffer, recvMsgSize,0)!=recvMsgSize)
                     DieWithError("send() failed");
                 printf("message ->: %s\n", echoBuffer);
-
+                log_msg(echoBuffer);
+*/
                 memset(echoBuffer, 0, sizeof(echoBuffer));
 
                 if((recvMsgSize=recv(clntSocket, echoBuffer, RCVBUFSIZE,0))<0)
                      DieWithError("recv() failed");
-        
+                log_msg(echoBuffer);
+
                 printf("message <- %s \n", echoBuffer);
+  
+                if(send(clntSocket, echoBuffer, recvMsgSize,0)!=recvMsgSize)
+                    DieWithError("send() failed");
+                printf("message ->: %s\n", echoBuffer);
+                log_msg(echoBuffer);
              }
         }
-        else if(strcmp(command, "save log")==0){
-        
+        else if(strcmp(command, "save_log")==0){
+            printf("handle save_log command,,,\n");
+
+            FileUploadProcess(clntSocket);
+            printf("End file upload process\n");
         }
         else{
         
             printf("!!! Invalid command !!!\n");
         }
+        log_msg("=======================");
 
     }
 /*    
@@ -133,7 +149,7 @@ int CreateTCPServerSocket(unsigned short port){
 void log_msg(char *msg){
 
     FILE *fp;
-    fp=fopen("history.log","a");
+    fp=fopen("history.txt","a");
     fprintf(fp, "%s\n",msg);
     fclose(fp);
 }
